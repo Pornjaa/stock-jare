@@ -32,12 +32,16 @@ const App: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem('shop_entries');
-    const savedIce = localStorage.getItem('ice_debt_entries');
-    const savedCust = localStorage.getItem('customer_debt_entries');
-    if (saved) setEntries(JSON.parse(saved));
-    if (savedIce) setIceDebtEntries(JSON.parse(savedIce));
-    if (savedCust) setCustomerDebtEntries(JSON.parse(savedCust));
+    try {
+      const saved = localStorage.getItem('shop_entries');
+      const savedIce = localStorage.getItem('ice_debt_entries');
+      const savedCust = localStorage.getItem('customer_debt_entries');
+      if (saved) setEntries(JSON.parse(saved));
+      if (savedIce) setIceDebtEntries(JSON.parse(savedIce));
+      if (savedCust) setCustomerDebtEntries(JSON.parse(savedCust));
+    } catch (e) {
+      console.error("Failed to load from localStorage", e);
+    }
   }, []);
 
   useEffect(() => {
