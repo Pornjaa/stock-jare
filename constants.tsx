@@ -2,14 +2,46 @@
 import { CategoryType } from './types';
 
 export const CATEGORIES_CONFIG = [
-  { type: CategoryType.ICE, label: 'น้ำแข็ง', icon: '🧊' },
-  { type: CategoryType.SOFT_DRINK, label: 'น้ำอัดลม', icon: '🥤' },
-  { type: CategoryType.ENERGY_DRINK, label: 'เครื่องดื่มบำรุงกำลัง', icon: '⚡' },
-  { type: CategoryType.WATER, label: 'น้ำเปล่า', icon: '💧' },
-  { type: CategoryType.LIQUOR, label: 'เหล้า', icon: '🥃' },
-  { type: CategoryType.BEER, label: 'เบียร์', icon: '🍺' },
-  { type: CategoryType.CIGARETTE, label: 'บุหรี่', icon: '🚬' },
-  { type: CategoryType.OTHERS, label: 'อื่นๆ', icon: '📦' },
+  { 
+    type: CategoryType.ICE, 
+    label: 'น้ำแข็ง', 
+    image: 'https://images.unsplash.com/photo-1516139008210-96e45dccd83b?auto=format&fit=crop&q=80&w=400' 
+  },
+  { 
+    type: CategoryType.SOFT_DRINK, 
+    label: 'น้ำอัดลม', 
+    image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&q=80&w=400' 
+  },
+  { 
+    type: CategoryType.ENERGY_DRINK, 
+    label: 'เครื่องดื่มบำรุงกำลัง', 
+    image: 'https://images.unsplash.com/photo-1622543953495-a92ee3951297?auto=format&fit=crop&q=80&w=400' 
+  },
+  { 
+    type: CategoryType.WATER, 
+    label: 'น้ำเปล่า', 
+    image: 'https://images.unsplash.com/photo-1548839140-29a749e1cf3d?auto=format&fit=crop&q=80&w=400' 
+  },
+  { 
+    type: CategoryType.LIQUOR, 
+    label: 'เหล้า', 
+    image: 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=400' 
+  },
+  { 
+    type: CategoryType.BEER, 
+    label: 'เบียร์', 
+    image: 'https://images.unsplash.com/photo-1535958636474-b021ee887b13?auto=format&fit=crop&q=80&w=400' 
+  },
+  { 
+    type: CategoryType.CIGARETTE, 
+    label: 'บุหรี่', 
+    image: 'https://images.unsplash.com/photo-1527113353670-4e21bd503bb1?auto=format&fit=crop&q=80&w=400' 
+  },
+  { 
+    type: CategoryType.OTHERS, 
+    label: 'อื่นๆ', 
+    image: 'https://images.unsplash.com/photo-1583333222044-2e873b24652e?auto=format&fit=crop&q=80&w=400' 
+  },
 ];
 
 export const PRODUCTS_BY_CATEGORY: Record<string, string[]> = {
