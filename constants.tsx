@@ -1,5 +1,4 @@
-
-import { CategoryType } from './types';
+import { CategoryType } from './types.ts';
 
 export const CATEGORIES_CONFIG = [
   { 
