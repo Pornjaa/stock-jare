@@ -1,5 +1,5 @@
 {
-  "name": "shoptrack---ระบบบันทึกยอดสินค้าอัจฉริยะ",
+  "name": "shoptrack",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,16 +9,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react": "^19.2.3",
-    "react-dom": "^19.2.3",
-    "recharts": "2.12.7",
-    "vite": "^7.3.1",
-    "@vitejs/plugin-react": "^5.1.2"
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "recharts": "2.12.7"
   },
   "devDependencies": {
-    "@types/node": "^22.14.0",
-    "@vitejs/plugin-react": "^5.0.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "@types/react": "18.3.1",
+    "@types/react-dom": "18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.0.5"
   }
 }

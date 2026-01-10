@@ -1,3 +1,4 @@
+// Version: 1.0.1 - Fixed React 18 Compatibility & Time-based Summary
 import React, { useState, useEffect, useMemo } from 'react';
 import { Dashboard } from './components/Dashboard.tsx';
 import { CATEGORIES_CONFIG, PRODUCTS_BY_CATEGORY } from './constants.tsx';
@@ -211,6 +212,7 @@ const App: React.FC = () => {
                         customerDebtEntries.filter(e => !e.isSynced).length;
 
   const gasCode = `
+// Google Apps Script v1.0.1
 function doPost(e) {
   var data = JSON.parse(e.postData.contents);
   var ss = SpreadsheetApp.getActiveSpreadsheet();
