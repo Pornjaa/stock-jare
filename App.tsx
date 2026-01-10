@@ -11,7 +11,6 @@ const App: React.FC = () => {
   const [customerDebtEntries, setCustomerDebtEntries] = useState<CustomerDebtEntry[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<CategoryType | null>(null);
   const [sheetUrl, setSheetUrl] = useState<string>(localStorage.getItem('shoptrack_url') || '');
-  const [isUrlSaved, setIsUrlSaved] = useState(!!localStorage.getItem('shoptrack_url'));
   
   // Form State
   const [productName, setProductName] = useState('');
@@ -57,11 +56,10 @@ const App: React.FC = () => {
 
   const handleSaveUrl = () => {
     if (!sheetUrl.includes('/exec')) {
-      alert('⚠️ URL ต้องลงท้ายด้วย /exec (Web App URL จาก Google Apps Script)');
+      alert('⚠️ URL ต้องลงท้ายด้วย /exec');
       return;
     }
     localStorage.setItem('shoptrack_url', sheetUrl);
-    setIsUrlSaved(true);
     alert('บันทึก URL สำเร็จ!');
   };
 
@@ -81,7 +79,6 @@ const App: React.FC = () => {
     setStep('category');
     setSelectedCategory(null);
     setView('dashboard');
-    alert('✅ บันทึกรายการสำเร็จ!');
   };
 
   const handleIceDebtSave = () => {
@@ -115,7 +112,7 @@ const App: React.FC = () => {
 
   const syncToGoogleSheets = async () => {
     if (!sheetUrl) {
-      alert('⚠️ กรุณาตั้งค่า URL ในหน้า Settings ก่อนครับ');
+      alert('⚠️ กรุณาตั้งค่า URL ในหน้า Settings');
       setView('settings');
       return;
     }
@@ -123,7 +120,7 @@ const App: React.FC = () => {
     const unsyncedIce = iceDebtEntries.filter(e => !e.isSynced);
     const unsyncedCust = customerDebtEntries.filter(e => !e.isSynced);
     if (unsyncedEntries.length === 0 && unsyncedIce.length === 0 && unsyncedCust.length === 0) {
-      alert('ไม่มีข้อมูลใหม่ที่ยังไม่ได้ส่งครับ');
+      alert('ไม่มีข้อมูลใหม่ที่ยังไม่ได้ส่ง');
       return;
     }
     setIsSubmitting(true);
@@ -133,7 +130,7 @@ const App: React.FC = () => {
       setEntries(prev => prev.map(e => ({ ...e, isSynced: true })));
       setIceDebtEntries(prev => prev.map(e => ({ ...e, isSynced: true })));
       setCustomerDebtEntries(prev => prev.map(e => ({ ...e, isSynced: true })));
-      alert('🚀 ส่งข้อมูลเข้า Google Sheets เรียบร้อยแล้ว!');
+      alert('🚀 ส่งข้อมูลเรียบร้อยแล้ว!');
     } catch (error) {
       alert('❌ ผิดพลาด: ' + (error as Error).message);
     } finally {
@@ -167,15 +164,18 @@ const App: React.FC = () => {
         {view === 'dashboard' && (
           <div className="space-y-8 animate-fadeIn">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="md:col-span-2 bg-slate-900 p-8 rounded-[2rem] text-white shadow-2xl">
+              <div className="md:col-span-2 bg-slate-900 p-8 rounded-[2rem] text-white shadow-2xl flex flex-col justify-center">
                   <h2 className="text-blue-400 font-bold text-sm tracking-widest uppercase mb-1">DASHBOARD</h2>
                   <p className="text-2xl font-bold">ระบบบันทึกยอดร้านค้า</p>
-                  <p className="text-slate-400 text-sm mt-2">สรุปผลการลงสินค้าแยกตามหมวดหมู่และยอดเงิน</p>
+                  <div className="flex gap-2 mt-4">
+                    <button onClick={() => setView('customer-debt')} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-colors">👤 จัดการคนค้าง</button>
+                    <button onClick={() => setView('ice-debt')} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-colors">🧊 จัดการถุงค้าง</button>
+                  </div>
               </div>
               <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-xl flex flex-col justify-center items-center text-center">
                 <span className="text-slate-400 text-sm font-bold mb-2">🧊 ถุงน้ำแข็งค้าง</span>
                 <span className="text-5xl font-black text-slate-900">{currentIceDebt.toLocaleString()}</span>
-                <button onClick={() => setView('ice-debt')} className="mt-4 px-6 py-2 bg-blue-50 text-blue-600 rounded-full text-xs font-bold">จัดการยอดค้าง</button>
+                <button onClick={() => setView('ice-debt')} className="mt-4 px-6 py-2 bg-blue-50 text-blue-600 rounded-full text-xs font-bold">อัปเดตยอดถุง</button>
               </div>
             </div>
             <Dashboard entries={entries} />
@@ -236,6 +236,113 @@ const App: React.FC = () => {
           </div>
         )}
 
+        {view === 'ice-debt' && (
+          <div className="animate-slideUp max-w-2xl mx-auto">
+            <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-2xl space-y-8">
+              <div className="flex items-center gap-4">
+                <button onClick={() => setView('dashboard')} className="w-10 h-10 flex items-center justify-center bg-slate-100 rounded-full">⬅️</button>
+                <h2 className="text-2xl font-black text-slate-900">จัดการถุงน้ำแข็งค้าง</h2>
+              </div>
+              <div className="space-y-6">
+                <div className="p-6 bg-blue-50 rounded-2xl border border-blue-100">
+                  <p className="text-blue-600 text-xs font-black uppercase mb-1">ยอดค้างปัจจุบันจากระบบ</p>
+                  <p className="text-3xl font-black text-blue-900">{currentIceDebt} ถุง</p>
+                </div>
+                
+                <div className="pt-2">
+                  <label className="block text-sm font-black text-blue-700 mb-2 uppercase">แก้ไขยอดค้างเดิม (หากต้องการแก้ตัวเลขค้างเก่า)</label>
+                  <input 
+                    type="number" 
+                    value={manualPrevDebt} 
+                    onChange={(e) => setManualPrevDebt(Number(e.target.value))} 
+                    className="w-full px-5 py-4 rounded-2xl bg-blue-50 border border-blue-100 outline-none font-black text-blue-900" 
+                    placeholder="ระบุยอดค้างเดิม..."
+                  />
+                  <p className="text-[10px] text-blue-400 mt-1">* เปลี่ยนตัวเลขนี้หากต้องการเริ่มนับยอดค้างใหม่</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-black text-slate-700 mb-2 uppercase">ส่งเพิ่มวันนี้</label>
+                    <input type="number" value={deliveredBags || ''} onChange={(e) => setDeliveredBags(Number(e.target.value))} className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 outline-none font-black" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-black text-slate-700 mb-2 uppercase">เก็บคืนวันนี้</label>
+                    <input type="number" value={collectedBags || ''} onChange={(e) => setCollectedBags(Number(e.target.value))} className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 outline-none font-black" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-black text-slate-700 mb-2">หมายเหตุ</label>
+                  <input value={iceNote} onChange={(e) => setIceNote(e.target.value)} placeholder="เช่น ส่งล่วงหน้า..." className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 outline-none" />
+                </div>
+                <div className="pt-4 border-t border-slate-100">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="font-bold text-slate-500">ยอดค้างใหม่สุทธิ:</span>
+                    <span className="text-2xl font-black text-slate-900">{manualPrevDebt + deliveredBags - collectedBags} ถุง</span>
+                  </div>
+                  <button onClick={handleIceDebtSave} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-xl shadow-lg">ยืนยันการบันทึก</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {view === 'customer-debt' && (
+          <div className="animate-slideUp max-w-2xl mx-auto space-y-6">
+            <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-2xl space-y-8">
+              <div className="flex items-center gap-4">
+                <button onClick={() => setView('dashboard')} className="w-10 h-10 flex items-center justify-center bg-slate-100 rounded-full">⬅️</button>
+                <h2 className="text-2xl font-black text-slate-900">บันทึกคนค้าง</h2>
+              </div>
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-black text-slate-700 mb-2">ชื่อลูกค้า</label>
+                    <input value={debtCustName} onChange={(e) => setDebtCustName(e.target.value)} className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-black text-slate-700 mb-2">สินค้าที่ค้าง</label>
+                    <input value={debtItemName} onChange={(e) => setDebtItemName(e.target.value)} className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 outline-none" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-black text-slate-700 mb-2">จำนวน</label>
+                    <input type="number" value={debtQty || ''} onChange={(e) => setDebtQty(Number(e.target.value))} className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-black text-slate-700 mb-2">ยอดเงิน</label>
+                    <input type="number" value={debtAmount || ''} onChange={(e) => setDebtAmount(Number(e.target.value))} className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 outline-none" />
+                  </div>
+                </div>
+                <button onClick={handleAddCustomerDebt} className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-xl shadow-lg">บันทึกรายการ</button>
+              </div>
+            </div>
+
+            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden">
+              <h3 className="text-lg font-black mb-4">รายการค้างปัจจุบัน</h3>
+              <div className="space-y-3">
+                {customerDebtEntries.length === 0 ? (
+                  <p className="text-slate-400 text-center py-4">ไม่มีรายการค้าง</p>
+                ) : (
+                  customerDebtEntries.map(debt => (
+                    <div key={debt.id} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl">
+                      <div>
+                        <p className="font-bold text-slate-900">{debt.customerName}</p>
+                        <p className="text-xs text-slate-500">{debt.itemName} ({debt.quantity})</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-black text-red-600">฿{debt.amount.toLocaleString()}</p>
+                        <p className="text-[10px] text-slate-400">{new Date(debt.timestamp).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {view === 'settings' && (
           <div className="animate-slideUp max-w-2xl mx-auto">
             <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-2xl space-y-8">
@@ -256,9 +363,15 @@ const App: React.FC = () => {
         <button onClick={() => setView('dashboard')} className={`flex flex-col items-center gap-1 ${view === 'dashboard' ? 'text-blue-600' : 'text-slate-400'}`}>
           <span className="text-2xl">📊</span><span className="text-[10px] font-bold">แดชบอร์ด</span>
         </button>
+        <button onClick={() => setView('customer-debt')} className={`flex flex-col items-center gap-1 ${view === 'customer-debt' ? 'text-blue-600' : 'text-slate-400'}`}>
+          <span className="text-2xl">👤</span><span className="text-[10px] font-bold">คนค้าง</span>
+        </button>
         <div className="relative -mt-10">
           <button onClick={() => { setView('entry'); setStep('category'); }} className="bg-blue-600 text-white w-20 h-20 rounded-full shadow-2xl flex items-center justify-center text-4xl border-[6px] border-white active:scale-90 transition-all">+</button>
         </div>
+        <button onClick={() => setView('ice-debt')} className={`flex flex-col items-center gap-1 ${view === 'ice-debt' ? 'text-blue-600' : 'text-slate-400'}`}>
+          <span className="text-2xl">🧊</span><span className="text-[10px] font-bold">ถุงค้าง</span>
+        </button>
         <button onClick={() => setView('settings')} className={`flex flex-col items-center gap-1 ${view === 'settings' ? 'text-blue-600' : 'text-slate-400'}`}>
           <span className="text-2xl">⚙️</span><span className="text-[10px] font-bold">ตั้งค่า</span>
         </button>
