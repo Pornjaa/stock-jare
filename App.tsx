@@ -1,4 +1,4 @@
-// Version: 1.0.1 - Fixed React 18 Compatibility & Time-based Summary
+// ShopTrack Version: 1.1.2 (Latest Fix)
 import React, { useState, useEffect, useMemo } from 'react';
 import { Dashboard } from './components/Dashboard.tsx';
 import { CATEGORIES_CONFIG, PRODUCTS_BY_CATEGORY } from './constants.tsx';
@@ -26,7 +26,6 @@ const App: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<CategoryType | null>(null);
   const [sheetUrl, setSheetUrl] = useState<string>(localStorage.getItem('shoptrack_url') || '');
   
-  // ใช้ String เพื่อให้พิมพ์และลบตัวเลขได้ง่าย
   const [productName, setProductName] = useState('');
   const [quantity, setQuantity] = useState<string>('');
   const [price, setPrice] = useState<string>('');
@@ -83,7 +82,6 @@ const App: React.FC = () => {
     } catch (e) {}
   }, [entries, iceDebtEntries, customerDebtEntries]);
 
-  // คำนวณยอดค้างล่าสุดเพื่อใช้เป็นค่าเริ่มต้น
   const currentIceDebt = iceDebtEntries.length > 0 ? iceDebtEntries[0].currentDebt : 0;
 
   useEffect(() => {
@@ -225,7 +223,6 @@ function doPost(e) {
     data.products.forEach(function(p) {
       sheet.appendRow([new Date(p.timestamp), p.category, p.productName, p.quantity, p.totalPrice, p.id]);
     });
-    // เรียกใช้ฟังก์ชันสรุปยอดแบบละเอียดแยกตามชื่อสินค้าและช่วงเวลา
     updateTimeBasedSummary(ss);
   }
 
@@ -250,82 +247,6 @@ function doPost(e) {
   }
 
   return ContentService.createTextOutput("Success");
-}
-
-function updateTimeBasedSummary(ss) {
-  var summarySheet = ss.getSheetByName("Summary") || ss.insertSheet("Summary");
-  summarySheet.clear();
-  
-  var sourceSheet = ss.getSheetByName("Products");
-  if (!sourceSheet) return;
-  var data = sourceSheet.getDataRange().getValues();
-  if (data.length <= 1) return;
-
-  var now = new Date();
-  var todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  var weekStart = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000);
-  var monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  var yearStart = new Date(now.getFullYear(), 0, 1);
-
-  var periods = [
-    { title: "📊 สรุปยอดรายวัน (วันนี้)", start: todayStart },
-    { title: "📊 สรุปยอดรายสัปดาห์ (7 วันล่าสุด)", start: weekStart },
-    { title: "📊 สรุปยอดรายเดือน (เดือนนี้)", start: monthStart },
-    { title: "📊 สรุปยอดรายปี (ปีนี้)", start: yearStart }
-  ];
-
-  summarySheet.appendRow(["รายงานสรุปยอดขายแยกรายสินค้าตามช่วงเวลา"]);
-  summarySheet.getRange("A1").setFontWeight("bold").setFontSize(18).setFontColor("#1E293B");
-  summarySheet.appendRow(["อัปเดตล่าสุด: " + Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm")]);
-  summarySheet.appendRow([""]);
-
-  periods.forEach(function(period) {
-    var items = {};
-    var totalQty = 0;
-    var totalAmt = 0;
-
-    for (var i = 1; i < data.length; i++) {
-      var rowDate = new Date(data[i][0]);
-      if (rowDate >= period.start) {
-        var productName = data[i][2]; // ชื่อสินค้า (เช่น เบียร์ช้าง)
-        var qty = Number(data[i][3]) || 0;
-        var amt = Number(data[i][4]) || 0;
-        
-        if (!items[productName]) items[productName] = { qty: 0, amt: 0 };
-        items[productName].qty += qty;
-        items[productName].amt += amt;
-        
-        totalQty += qty;
-        totalAmt += amt;
-      }
-    }
-    
-    // พิมพ์หัวข้อช่วงเวลา
-    summarySheet.appendRow([period.title]);
-    summarySheet.getRange(summarySheet.getLastRow(), 1, 1, 3).setFontWeight("bold").setFontSize(14).setBackground("#F1F5F9");
-    
-    // พิมพ์หัวตาราง
-    summarySheet.appendRow(["ชื่อสินค้า", "จำนวนรวม", "ยอดเงินรวม (บาท)"]);
-    summarySheet.getRange(summarySheet.getLastRow(), 1, 1, 3).setBackground("#4A90E2").setFontColor("white").setFontWeight("bold");
-    
-    var sortedNames = Object.keys(items).sort();
-    if (sortedNames.length === 0) {
-      summarySheet.appendRow(["-- ไม่มีรายการสินค้าในช่วงเวลานี้ --", 0, 0]);
-    } else {
-      sortedNames.forEach(function(name) {
-        summarySheet.appendRow([name, items[name].qty, items[name].amt]);
-      });
-    }
-    
-    // พิมพ์ยอดรวมสุทธิของช่วงเวลานี้
-    summarySheet.appendRow(["ยอดรวมสุทธิ (" + period.title.split(" ")[1] + ")", totalQty, totalAmt]);
-    var footerRange = summarySheet.getRange(summarySheet.getLastRow(), 1, 1, 3);
-    footerRange.setBackground("#E2E8F0").setFontWeight("bold");
-    
-    summarySheet.appendRow([""]); // เว้นบรรทัดระหว่างช่วงเวลา
-  });
-  
-  summarySheet.autoResizeColumns(1, 3);
 }
   `;
 
@@ -353,7 +274,7 @@ function updateTimeBasedSummary(ss) {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="md:col-span-2 bg-slate-900 p-8 rounded-[2rem] text-white shadow-2xl flex flex-col justify-center relative overflow-hidden">
                   <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl"></div>
-                  <h2 className="text-blue-400 font-bold text-sm tracking-widest uppercase mb-1">DASHBOARD OVERVIEW</h2>
+                  <h2 className="text-blue-400 font-bold text-sm tracking-widest uppercase mb-1">DASHBOARD</h2>
                   <p className="text-2xl font-bold">ระบบบันทึกยอดร้านค้าอัจฉริยะ</p>
                   <div className="flex gap-2 mt-4 relative z-10">
                     <button onClick={() => setView('customer-debt')} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-colors">👤 จัดการคนค้าง</button>
@@ -423,7 +344,7 @@ function updateTimeBasedSummary(ss) {
                       <input type="number" inputMode="decimal" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="0" className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 outline-none font-black text-lg focus:border-blue-300 transition-colors" />
                     </div>
                     <div>
-                      <label className="block text-sm font-black text-slate-700 mb-2">รวมเงิน (พิมพ์ราคาได้เลย)</label>
+                      <label className="block text-sm font-black text-slate-700 mb-2">รวมเงิน</label>
                       <input type="number" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0.00" className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 outline-none font-black text-lg focus:border-blue-300 transition-colors border-2 border-blue-100 shadow-inner" />
                     </div>
                   </div>
@@ -447,7 +368,7 @@ function updateTimeBasedSummary(ss) {
               </div>
             </div>
             <div className="bg-slate-900 p-8 rounded-[2rem] text-white">
-              <h3 className="font-bold mb-2">Google Apps Script (คัดลอกโค้ดนี้ไปวางที่ Extensions > Apps Script):</h3>
+              <h3 className="font-bold mb-2">Google Apps Script:</h3>
               <pre className="text-[10px] overflow-auto max-h-80 bg-slate-800 p-4 rounded-xl">{gasCode}</pre>
               <button onClick={() => { navigator.clipboard.writeText(gasCode); alert('คัดลอกโค้ดแล้ว!'); }} className="mt-4 px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-bold transition-all">📋 คัดลอกโค้ด</button>
             </div>
@@ -463,22 +384,10 @@ function updateTimeBasedSummary(ss) {
              </div>
              <div className="space-y-6">
                <div className="p-6 bg-blue-50 rounded-2xl border border-blue-100">
-                 <p className="text-blue-600 text-xs font-black uppercase mb-1">ยอดค้างปัจจุบันจากระบบ</p>
+                 <p className="text-blue-600 text-xs font-black uppercase mb-1">ยอดค้างปัจจุบัน</p>
                  <p className="text-3xl font-black text-blue-900">{currentIceDebt} ถุง</p>
                </div>
                
-               <div className="pt-2">
-                 <label className="block text-sm font-black text-blue-700 mb-2 uppercase">ยอดค้างเดิม (อ้างอิงล่าสุดอัตโนมัติ)</label>
-                 <input 
-                   type="number" 
-                   inputMode="decimal"
-                   value={manualPrevDebt} 
-                   onChange={(e) => setManualPrevDebt(e.target.value)} 
-                   className="w-full px-5 py-4 rounded-2xl bg-blue-50 border border-blue-100 outline-none font-black text-blue-900 focus:border-blue-300 transition-colors" 
-                   placeholder="ระบุยอดค้างเดิม..."
-                 />
-               </div>
-
                <div className="grid grid-cols-2 gap-4">
                  <div>
                    <label className="block text-sm font-black text-slate-700 mb-2 uppercase">ส่งเพิ่มวันนี้</label>
@@ -489,13 +398,7 @@ function updateTimeBasedSummary(ss) {
                    <input type="number" inputMode="decimal" value={collectedBags} onChange={(e) => setCollectedBags(e.target.value)} className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 outline-none font-black" />
                  </div>
                </div>
-               <div className="pt-4 border-t border-slate-100">
-                 <div className="flex justify-between items-center mb-4">
-                   <span className="font-bold text-slate-500">ยอดค้างใหม่สุทธิ:</span>
-                   <span className="text-2xl font-black text-slate-900">{(parseFloat(manualPrevDebt)||0) + (parseFloat(deliveredBags)||0) - (parseFloat(collectedBags)||0)} ถุง</span>
-                 </div>
-                 <button onClick={handleIceDebtSave} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-xl shadow-lg hover:bg-blue-700 transition-all">ยืนยันการบันทึก</button>
-               </div>
+               <button onClick={handleIceDebtSave} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-xl shadow-lg hover:bg-blue-700 transition-all">ยืนยันการบันทึก</button>
              </div>
            </div>
          </div>
@@ -553,12 +456,6 @@ function updateTimeBasedSummary(ss) {
           <span className="text-2xl">⚙️</span><span className="text-[10px] font-bold uppercase tracking-tighter">Set</span>
         </button>
       </nav>
-
-      <style>{`
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fadeIn { animation: fadeIn 0.4s ease-out; }
-        .animate-slideUp { animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
-      `}</style>
     </div>
   );
 };
