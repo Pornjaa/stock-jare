@@ -1,4 +1,4 @@
-// ShopTrack Version: 1.1.5 (Netlify Ready + Editable Ice Debt)
+// ShopTrack Version: 1.1.6 (Fixed Custom Product Name Saving)
 import React, { useState, useEffect, useMemo } from 'react';
 import { Dashboard } from './components/Dashboard.tsx';
 import { CATEGORIES_CONFIG, PRODUCTS_BY_CATEGORY } from './constants.tsx';
@@ -95,20 +95,31 @@ const App: React.FC = () => {
   };
 
   const saveProductDirectly = () => {
-    const qtyVal = parseFloat(quantity) || 0;
-    const priceVal = parseFloat(price) || 0;
-    if (!selectedCategory || !productName || qtyVal <= 0) return;
+    const cleanName = productName.trim();
+    const qtyVal = parseFloat(quantity.toString().replace(/,/g, '')) || 0;
+    const priceVal = parseFloat(price.toString().replace(/,/g, '')) || 0;
+    
+    if (!selectedCategory || !cleanName || qtyVal <= 0) {
+      alert('⚠️ โปรดระบุชื่อสินค้าและจำนวนให้ถูกต้อง');
+      return;
+    }
+
     const newEntry: ProductEntry = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: Math.random().toString(36).substring(2, 11),
       timestamp: new Date().toISOString(),
       category: selectedCategory,
-      productName,
+      productName: cleanName,
       quantity: qtyVal,
       totalPrice: priceVal,
       isSynced: false
     };
+
     setEntries(prev => [newEntry, ...prev]);
-    setProductName(''); setQuantity(''); setPrice('');
+    
+    // Reset inputs
+    setProductName(''); 
+    setQuantity(''); 
+    setPrice('');
     setStep('category');
     setSelectedCategory(null);
     setView('dashboard');
@@ -117,11 +128,10 @@ const App: React.FC = () => {
   const handleIceDebtSave = () => {
     const del = parseFloat(deliveredBags) || 0;
     const col = parseFloat(collectedBags) || 0;
-    // ใช้ยอดค้างสะสมจาก manualPrevDebt ถ้ามีการแก้ไข ถ้าไม่มีใช้ค่าล่าสุดจากระบบ
     const prev = manualPrevDebt !== '' ? (parseFloat(manualPrevDebt) || 0) : currentIceDebt;
     
     const newIceEntry: IceDebtEntry = {
-      id: Math.random().toString(36).substr(2, 9), 
+      id: Math.random().toString(36).substring(2, 11), 
       timestamp: new Date().toISOString(),
       previousDebt: prev, 
       deliveredBags: del, 
@@ -137,12 +147,15 @@ const App: React.FC = () => {
   };
 
   const handleAddCustomerDebt = () => {
-    if (!debtCustName || !debtItemName) return;
+    const cleanCustName = debtCustName.trim();
+    const cleanItemName = debtItemName.trim();
+    if (!cleanCustName || !cleanItemName) return;
+    
     const newEntry: CustomerDebtEntry = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: Math.random().toString(36).substring(2, 11),
       timestamp: new Date().toISOString(),
-      customerName: debtCustName,
-      itemName: debtItemName,
+      customerName: cleanCustName,
+      itemName: cleanItemName,
       quantity: parseFloat(debtQty) || 0,
       amount: parseFloat(debtAmount) || 0,
       isSynced: false
@@ -273,22 +286,44 @@ const App: React.FC = () => {
                     <div className="flex flex-wrap gap-2 mb-4">
                       {selectedCategory && PRODUCTS_BY_CATEGORY[selectedCategory]?.map(name => (
                         <button key={name} onClick={() => setProductName(name)} 
-                          className={`px-4 py-2 rounded-xl text-xs font-bold border ${productName === name ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-500'}`}>{name}</button>
+                          className={`px-4 py-2 rounded-xl text-xs font-bold border transition-colors ${productName === name ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-500'}`}>{name}</button>
                       ))}
                     </div>
-                    <input value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="พิมพ์ชื่อสินค้า..." className="w-full px-5 py-4 rounded-2xl bg-slate-50 border outline-none font-bold focus:border-blue-300" />
+                    <input 
+                      value={productName} 
+                      onChange={(e) => setProductName(e.target.value)} 
+                      onKeyDown={(e) => e.key === 'Enter' && saveProductDirectly()}
+                      placeholder="พิมพ์ชื่อสินค้าที่ต้องการลงขาย..." 
+                      className="w-full px-5 py-4 rounded-2xl bg-slate-50 border outline-none font-bold focus:border-blue-300 focus:bg-white transition-all" 
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-black text-slate-700 mb-2">จำนวน</label>
-                      <input type="number" inputMode="decimal" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="0" className="w-full px-5 py-4 rounded-2xl bg-slate-50 border font-black text-lg" />
+                      <input 
+                        type="number" 
+                        inputMode="decimal" 
+                        value={quantity} 
+                        onChange={(e) => setQuantity(e.target.value)} 
+                        onKeyDown={(e) => e.key === 'Enter' && saveProductDirectly()}
+                        placeholder="0" 
+                        className="w-full px-5 py-4 rounded-2xl bg-slate-50 border font-black text-lg focus:border-blue-300 focus:bg-white" 
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-black text-slate-700 mb-2">ราคาขายรวม</label>
-                      <input type="number" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0.00" className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-2 border-blue-100 font-black text-lg" />
+                      <input 
+                        type="number" 
+                        inputMode="decimal" 
+                        value={price} 
+                        onChange={(e) => setPrice(e.target.value)} 
+                        onKeyDown={(e) => e.key === 'Enter' && saveProductDirectly()}
+                        placeholder="0.00" 
+                        className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-2 border-blue-100 font-black text-lg focus:border-blue-300 focus:bg-white" 
+                      />
                     </div>
                   </div>
-                  <button onClick={saveProductDirectly} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-xl shadow-lg active:scale-95 transition-all">บันทึกข้อมูล</button>
+                  <button onClick={saveProductDirectly} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-xl shadow-lg active:scale-95 transition-all hover:bg-blue-700">บันทึกข้อมูล</button>
                 </div>
               </div>
             )}
