@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ShopTrack - ระบบบันทึกยอดสินค้าอัจฉริยะ</title>
+    <!-- ใช้ Tailwind ผ่าน CDN เพื่อความรวดเร็วในการแสดงผล UI -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
@@ -38,7 +39,7 @@
 </head>
 <body>
     <div id="root"></div>
-    <!-- เชื่อมโยงไปยังไฟล์ index.tsx เพื่อให้ Vite ประมวลผล -->
-    <script type="module" src="/index.tsx"></script>
+    <!-- ใช้ Relative Path เพื่อให้ Vite Build ทำงานได้ถูกต้องในทุกโฮสติ้ง -->
+    <script type="module" src="./index.tsx"></script>
 </body>
 </html>
