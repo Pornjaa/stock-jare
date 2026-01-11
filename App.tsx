@@ -1,4 +1,4 @@
-// ShopTrack Version: 1.1.4 (Netlify Ready)
+// ShopTrack Version: 1.1.5 (Netlify Ready + Editable Ice Debt)
 import React, { useState, useEffect, useMemo } from 'react';
 import { Dashboard } from './components/Dashboard.tsx';
 import { CATEGORIES_CONFIG, PRODUCTS_BY_CATEGORY } from './constants.tsx';
@@ -45,7 +45,6 @@ const App: React.FC = () => {
   useEffect(() => {
     try {
       const path = view === 'dashboard' ? '/' : `/${view}`;
-      // Check if we are in a normal web environment (not preview/iframe)
       const canPush = window.location.protocol.startsWith('http');
       if (canPush && window.location.pathname !== path) {
         window.history.pushState({}, '', path);
@@ -118,14 +117,21 @@ const App: React.FC = () => {
   const handleIceDebtSave = () => {
     const del = parseFloat(deliveredBags) || 0;
     const col = parseFloat(collectedBags) || 0;
+    // ใช้ยอดค้างสะสมจาก manualPrevDebt ถ้ามีการแก้ไข ถ้าไม่มีใช้ค่าล่าสุดจากระบบ
+    const prev = manualPrevDebt !== '' ? (parseFloat(manualPrevDebt) || 0) : currentIceDebt;
+    
     const newIceEntry: IceDebtEntry = {
-      id: Math.random().toString(36).substr(2, 9), timestamp: new Date().toISOString(),
-      previousDebt: currentIceDebt, deliveredBags: del, collectedBags: col, 
-      currentDebt: currentIceDebt + del - col,
-      note: iceNote, isSynced: false
+      id: Math.random().toString(36).substr(2, 9), 
+      timestamp: new Date().toISOString(),
+      previousDebt: prev, 
+      deliveredBags: del, 
+      collectedBags: col, 
+      currentDebt: prev + del - col,
+      note: iceNote, 
+      isSynced: false
     };
     setIceDebtEntries(prevArr => [newIceEntry, ...prevArr]);
-    setDeliveredBags(''); setCollectedBags(''); setIceNote('');
+    setDeliveredBags(''); setCollectedBags(''); setIceNote(''); setManualPrevDebt('');
     setView('dashboard');
     alert('✅ อัปเดตยอดถุงน้ำแข็งค้างแล้ว');
   };
@@ -313,8 +319,14 @@ const App: React.FC = () => {
              </div>
              <div className="space-y-6">
                <div className="p-6 bg-blue-50 rounded-2xl border border-blue-100">
-                 <p className="text-blue-600 text-xs font-black uppercase mb-1">ค้างสะสมเดิม</p>
-                 <p className="text-4xl font-black text-blue-900">{currentIceDebt} ถุง</p>
+                 <p className="text-blue-600 text-xs font-black uppercase mb-1">ค้างสะสมเดิม (แก้ไขได้)</p>
+                 <input 
+                   type="number" 
+                   inputMode="decimal"
+                   value={manualPrevDebt === '' ? currentIceDebt : manualPrevDebt} 
+                   onChange={(e) => setManualPrevDebt(e.target.value)}
+                   className="text-4xl font-black text-blue-900 bg-transparent border-b-2 border-blue-200 outline-none w-full focus:border-blue-500"
+                 />
                </div>
                <div className="grid grid-cols-2 gap-4">
                  <div>
