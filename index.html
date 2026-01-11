@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ShopTrack - ระบบบันทึกยอดสินค้าอัจฉริยะ</title>
-    <!-- Tailwind CSS via CDN -->
+    <!-- Tailwind CSS via CDN - ใช้แบบนี้ได้เพราะเป็น CSS ไม่ขัดแย้งกับ JS Build -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
@@ -48,7 +48,7 @@
 </head>
 <body>
     <div id="root"></div>
-    <!-- Vite จะทำหน้าที่แปลงไฟล์ .tsx เป็น JS ในช่วง build ให้โดยอัตโนมัติ -->
+    <!-- Vite จะแปลง index.tsx เป็น JavaScript ที่ browser อ่านได้ในช่วง build process -->
     <script type="module" src="/index.tsx"></script>
 </body>
 </html>
