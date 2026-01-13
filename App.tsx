@@ -1,4 +1,4 @@
-// ShopTrack Version: 1.1.6 (Fixed Custom Product Name Saving)
+// ShopTrack Version: 1.2.1 (Refined Today's Stats Logic)
 import React, { useState, useEffect, useMemo } from 'react';
 import { Dashboard } from './components/Dashboard.tsx';
 import { CATEGORIES_CONFIG, PRODUCTS_BY_CATEGORY } from './constants.tsx';
@@ -12,13 +12,14 @@ const App: React.FC = () => {
       if (path === '/ice-debt') return 'ice-debt';
       if (path === '/customer-debt') return 'customer-debt';
       if (path === '/settings') return 'settings';
+      if (path === '/peek-stats') return 'peek-stats';
       return 'dashboard';
     } catch (e) {
       return 'dashboard';
     }
   };
 
-  const [view, setView] = useState<'dashboard' | 'entry' | 'ice-debt' | 'customer-debt' | 'settings'>(getPageFromPath());
+  const [view, setView] = useState<'dashboard' | 'entry' | 'ice-debt' | 'customer-debt' | 'settings' | 'peek-stats'>(getPageFromPath());
   const [step, setStep] = useState<'category' | 'details'>('category');
   const [entries, setEntries] = useState<ProductEntry[]>([]);
   const [iceDebtEntries, setIceDebtEntries] = useState<IceDebtEntry[]>([]);
@@ -40,7 +41,10 @@ const App: React.FC = () => {
   const [debtQty, setDebtQty] = useState<string>('');
   const [debtAmount, setDebtAmount] = useState<string>('');
 
+  const [peekSearch, setPeekSearch] = useState('');
+
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(false);
 
   useEffect(() => {
     try {
@@ -70,6 +74,33 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    const fetchExistingData = async () => {
+      if (!sheetUrl) return;
+      setIsInitialLoading(true);
+      try {
+        const cacheBuster = `${sheetUrl}${sheetUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
+        const response = await fetch(cacheBuster);
+        if (response.ok) {
+          const data = await response.json();
+          if (data) {
+            if (data.products) setEntries(data.products);
+            if (data.iceDebt) setIceDebtEntries(data.iceDebt);
+            if (data.customerDebt) setCustomerDebtEntries(data.customerDebt);
+          }
+        }
+      } catch (err) {
+        console.warn("Sync: Could not fetch from Sheets. Using local data.", err);
+      } finally {
+        setIsInitialLoading(false);
+      }
+    };
+
+    if (view === 'peek-stats' || view === 'dashboard') {
+      fetchExistingData();
+    }
+  }, [sheetUrl, view]);
+
+  useEffect(() => {
     localStorage.setItem('shop_entries', JSON.stringify(entries));
     localStorage.setItem('ice_debt_entries', JSON.stringify(iceDebtEntries));
     localStorage.setItem('customer_debt_entries', JSON.stringify(customerDebtEntries));
@@ -88,6 +119,60 @@ const App: React.FC = () => {
     });
     return summary;
   }, [entries]);
+
+  const peekResults = useMemo(() => {
+    if (!peekSearch.trim()) return null;
+    const now = new Date();
+    
+    // กำหนดวันที่ปัจจุบันแบบแยกหน่วย เพื่อความแม่นยำในการเปรียบเทียบรายวัน
+    const todayYear = now.getFullYear();
+    const todayMonth = now.getMonth();
+    const todayDate = now.getDate();
+    
+    const weekStart = new Date(todayYear, todayMonth, todayDate);
+    weekStart.setDate(weekStart.getDate() - 6); // 7 วันล่าสุดรวมวันนี้
+    
+    const stats = {
+      today: { qty: 0, amount: 0 },
+      week: { qty: 0, amount: 0 },
+      month: { qty: 0, amount: 0 },
+      year: { qty: 0, amount: 0 }
+    };
+
+    const target = peekSearch.trim().toLowerCase();
+    entries.forEach(e => {
+      if (e.productName.toLowerCase().includes(target)) {
+        const d = new Date(e.timestamp);
+        
+        // 1. วันนี้ (เปรียบเทียบ ปี-เดือน-วัน ให้ตรงกับปัจจุบันแบบเป๊ะๆ)
+        if (d.getFullYear() === todayYear && 
+            d.getMonth() === todayMonth && 
+            d.getDate() === todayDate) {
+          stats.today.qty += e.quantity;
+          stats.today.amount += e.totalPrice;
+        }
+        
+        // 2. 7 วันล่าสุด (Rolling 7 days)
+        if (d >= weekStart) {
+          stats.week.qty += e.quantity;
+          stats.week.amount += e.totalPrice;
+        }
+        
+        // 3. เดือนนี้ (ปฏิทินเดือนปัจจุบัน)
+        if (d.getMonth() === todayMonth && d.getFullYear() === todayYear) {
+          stats.month.qty += e.quantity;
+          stats.month.amount += e.totalPrice;
+        }
+        
+        // 4. ปีนี้ (ปฏิทินปีปัจจุบัน)
+        if (d.getFullYear() === todayYear) {
+          stats.year.qty += e.quantity;
+          stats.year.amount += e.totalPrice;
+        }
+      }
+    });
+    return stats;
+  }, [entries, peekSearch]);
 
   const handleSaveUrl = () => {
     localStorage.setItem('shoptrack_url', sheetUrl);
@@ -116,7 +201,6 @@ const App: React.FC = () => {
 
     setEntries(prev => [newEntry, ...prev]);
     
-    // Reset inputs
     setProductName(''); 
     setQuantity(''); 
     setPrice('');
@@ -224,6 +308,14 @@ const App: React.FC = () => {
         </div>
       </header>
 
+      {isInitialLoading && (
+        <div className="fixed top-[72px] left-0 right-0 z-50 flex justify-center">
+          <div className="bg-blue-600 text-white px-4 py-1 rounded-b-lg text-[10px] font-bold animate-pulse shadow-md">
+            🔄 กำลังดึงข้อมูลปัจจุบันจากชีต...
+          </div>
+        </div>
+      )}
+
       <main className="max-w-5xl mx-auto px-6 py-8">
         {view === 'dashboard' && (
           <div className="space-y-8 animate-fadeIn">
@@ -232,9 +324,10 @@ const App: React.FC = () => {
                   <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl"></div>
                   <h2 className="text-blue-400 font-bold text-sm tracking-widest uppercase mb-1">OVERVIEW</h2>
                   <p className="text-2xl font-bold">บันทึกยอดขายวันนี้</p>
-                  <div className="flex gap-2 mt-4 relative z-10">
+                  <div className="flex gap-2 mt-4 relative z-10 flex-wrap">
                     <button onClick={() => setView('customer-debt')} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold">👤 คนค้าง</button>
                     <button onClick={() => setView('ice-debt')} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold">🧊 ถุงน้ำแข็ง</button>
+                    <button onClick={() => setView('peek-stats')} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold">🔍 ส่องยอด</button>
                   </div>
               </div>
               <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-xl flex flex-col justify-center items-center text-center">
@@ -245,7 +338,7 @@ const App: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
-              {Object.entries(categorySummary).map(([cat, data]) => (
+              {Object.entries(categorySummary).map(([cat, data]: [string, any]) => (
                 <div key={cat} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center">
                   <span className="text-[10px] text-slate-500 font-bold text-center h-8 flex items-center leading-none">{cat}</span>
                   <span className="text-sm font-black text-blue-600">฿{data.amount.toLocaleString()}</span>
@@ -254,6 +347,58 @@ const App: React.FC = () => {
             </div>
 
             <Dashboard entries={entries} />
+          </div>
+        )}
+
+        {view === 'peek-stats' && (
+          <div className="animate-fadeIn max-w-2xl mx-auto space-y-6">
+            <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-2xl space-y-8">
+              <div className="flex items-center gap-4">
+                <button onClick={() => setView('dashboard')} className="w-10 h-10 flex items-center justify-center bg-slate-100 rounded-full">⬅️</button>
+                <h2 className="text-2xl font-black text-slate-900 tracking-tight">🔍 ส่องยอดรายสินค้า</h2>
+              </div>
+              
+              <div className="space-y-4">
+                <p className="text-slate-500 text-sm font-medium">ระบุชื่อสินค้าที่ต้องการส่องยอด (ระบบจะค้นหาชื่อที่ใกล้เคียง)</p>
+                <div className="relative">
+                   <input 
+                    value={peekSearch} 
+                    onChange={(e) => setPeekSearch(e.target.value)} 
+                    placeholder="เช่น ลีโอ, โค้ก, สายฝน..." 
+                    className="w-full px-6 py-5 rounded-3xl bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white outline-none font-bold text-lg transition-all shadow-inner"
+                  />
+                  {peekSearch && (
+                    <button onClick={() => setPeekSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center text-slate-500 font-bold">✕</button>
+                  )}
+                </div>
+              </div>
+
+              {peekResults && peekSearch.trim() !== '' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fadeIn">
+                  {[
+                    { label: 'วันนี้', data: peekResults.today, color: 'blue' },
+                    { label: '7 วันล่าสุด', data: peekResults.week, color: 'emerald' },
+                    { label: 'เดือนนี้', data: peekResults.month, color: 'amber' },
+                    { label: 'ปีนี้', data: peekResults.year, color: 'purple' },
+                  ].map((item, idx) => (
+                    <div key={idx} className={`bg-${item.color}-50 p-6 rounded-3xl border border-${item.color}-100 flex flex-col`}>
+                      <span className={`text-${item.color}-600 text-[10px] font-black uppercase tracking-widest mb-1`}>{item.label}</span>
+                      <div className="flex justify-between items-end">
+                        <div className="flex flex-col">
+                          <span className="text-2xl font-black text-slate-900">{item.data.qty.toLocaleString()} <small className="text-[10px] text-slate-400 font-normal">ชิ้น</small></span>
+                          <span className={`text-lg font-bold text-${item.color}-700`}>฿{item.data.amount.toLocaleString()}</span>
+                        </div>
+                        <div className={`w-8 h-8 rounded-full bg-${item.color}-200/50 flex items-center justify-center text-xs`}>📈</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {!peekResults && peekSearch.trim() !== '' && (
+                 <div className="text-center py-10 text-slate-400 italic bg-slate-50 rounded-3xl">-- ไม่พบข้อมูลสินค้าชื่อนี้ --</div>
+              )}
+            </div>
           </div>
         )}
 
@@ -404,14 +549,14 @@ const App: React.FC = () => {
         <button onClick={() => setView('dashboard')} className={`flex flex-col items-center gap-1 ${view === 'dashboard' ? 'text-blue-600 scale-110' : 'text-slate-400'}`}>
           <span className="text-2xl">📊</span><span className="text-[10px] font-bold uppercase">สรุปยอด</span>
         </button>
-        <button onClick={() => setView('customer-debt')} className={`flex flex-col items-center gap-1 ${view === 'customer-debt' ? 'text-blue-600 scale-110' : 'text-slate-400'}`}>
-          <span className="text-2xl">👤</span><span className="text-[10px] font-bold uppercase">คนค้าง</span>
+        <button onClick={() => setView('peek-stats')} className={`flex flex-col items-center gap-1 ${view === 'peek-stats' ? 'text-blue-600 scale-110' : 'text-slate-400'}`}>
+          <span className="text-2xl">🔍</span><span className="text-[10px] font-bold uppercase">ส่องยอด</span>
         </button>
         <div className="relative -mt-10">
           <button onClick={() => { setView('entry'); setStep('category'); }} className="bg-blue-600 text-white w-20 h-20 rounded-full shadow-2xl flex items-center justify-center text-4xl border-[6px] border-white active:scale-90 transition-all font-light">+</button>
         </div>
-        <button onClick={() => setView('ice-debt')} className={`flex flex-col items-center gap-1 ${view === 'ice-debt' ? 'text-blue-600 scale-110' : 'text-slate-400'}`}>
-          <span className="text-2xl">🧊</span><span className="text-[10px] font-bold uppercase">น้ำแข็ง</span>
+        <button onClick={() => setView('customer-debt')} className={`flex flex-col items-center gap-1 ${view === 'customer-debt' ? 'text-blue-600 scale-110' : 'text-slate-400'}`}>
+          <span className="text-2xl">👤</span><span className="text-[10px] font-bold uppercase">คนค้าง</span>
         </button>
         <button onClick={() => setView('settings')} className={`flex flex-col items-center gap-1 ${view === 'settings' ? 'text-blue-600 scale-110' : 'text-slate-400'}`}>
           <span className="text-2xl">⚙️</span><span className="text-[10px] font-bold uppercase">ตั้งค่า</span>

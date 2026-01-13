@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -17,27 +16,38 @@ type TimeFilter = 'day' | 'week' | 'month' | 'year' | 'all';
 export const Dashboard: React.FC<DashboardProps> = ({ entries }) => {
   const [filter, setFilter] = useState<TimeFilter>('all');
 
-  // กรองข้อมูลตามช่วงเวลา
+  // กรองข้อมูลตามช่วงเวลา (ใช้ตรรกะแบบเดียวกับ App.tsx เพื่อความแม่นยำ)
   const filteredEntries = useMemo(() => {
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    // กำหนดวันที่ปัจจุบันแบบแยกหน่วย
+    const todayYear = now.getFullYear();
+    const todayMonth = now.getMonth();
+    const todayDate = now.getDate();
+    
+    const weekStart = new Date(todayYear, todayMonth, todayDate);
+    weekStart.setDate(weekStart.getDate() - 6);
     
     return entries.filter(entry => {
-      const entryDate = new Date(entry.timestamp);
+      const d = new Date(entry.timestamp);
       
       if (filter === 'day') {
-        return entryDate >= today;
+        // เฉพาะวันนี้เท่านั้น (เปรียบเทียบ ปี-เดือน-วัน ตรงกัน)
+        return d.getFullYear() === todayYear && 
+               d.getMonth() === todayMonth && 
+               d.getDate() === todayDate;
       }
       if (filter === 'week') {
-        const lastWeek = new Date(today);
-        lastWeek.setDate(today.getDate() - 7);
-        return entryDate >= lastWeek;
+        // 7 วันล่าสุดรวมวันนี้
+        return d >= weekStart;
       }
       if (filter === 'month') {
-        return entryDate.getMonth() === now.getMonth() && entryDate.getFullYear() === now.getFullYear();
+        // เฉพาะเดือนนี้
+        return d.getMonth() === todayMonth && d.getFullYear() === todayYear;
       }
       if (filter === 'year') {
-        return entryDate.getFullYear() === now.getFullYear();
+        // เฉพาะปีนี้
+        return d.getFullYear() === todayYear;
       }
       return true;
     });
