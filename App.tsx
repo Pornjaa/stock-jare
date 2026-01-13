@@ -1,4 +1,4 @@
-// ShopTrack Version: 1.2.1 (Refined Today's Stats Logic)
+// ShopTrack Version: 1.1.9 (Fixed Data Sync for Peek Stats)
 import React, { useState, useEffect, useMemo } from 'react';
 import { Dashboard } from './components/Dashboard.tsx';
 import { CATEGORIES_CONFIG, PRODUCTS_BY_CATEGORY } from './constants.tsx';
@@ -64,6 +64,7 @@ const App: React.FC = () => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  // 1. ดึงข้อมูลจาก Local Storage เป็นอันดับแรก (Fast Load)
   useEffect(() => {
     const saved = localStorage.getItem('shop_entries');
     const savedIce = localStorage.getItem('ice_debt_entries');
@@ -73,19 +74,43 @@ const App: React.FC = () => {
     if (savedCust) setCustomerDebtEntries(JSON.parse(savedCust));
   }, []);
 
+  // 2. ปรับปรุง: ดึงข้อมูลจาก Google Sheets เมื่อมีการสลับหน้า (Auto-Restore & Refresh)
   useEffect(() => {
     const fetchExistingData = async () => {
       if (!sheetUrl) return;
       setIsInitialLoading(true);
       try {
+        // เพิ่ม timestamp (t=...) เพื่อป้องกัน browser จำค่าเก่า (Cache)
         const cacheBuster = `${sheetUrl}${sheetUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
         const response = await fetch(cacheBuster);
         if (response.ok) {
           const data = await response.json();
           if (data) {
-            if (data.products) setEntries(data.products);
-            if (data.iceDebt) setIceDebtEntries(data.iceDebt);
-            if (data.customerDebt) setCustomerDebtEntries(data.customerDebt);
+            // ป้องกันข้อมูลใหม่ที่ยังไม่ได้ซิงค์หาย โดยการใช้ Merge Logic
+            if (data.products) {
+              setEntries(prev => {
+                const unsynced = prev.filter(e => !e.isSynced);
+                const synced = data.products.map((p: any) => ({ ...p, isSynced: true }));
+                const unsyncedIds = new Set(unsynced.map(u => u.id));
+                return [...unsynced, ...synced.filter((s: any) => !unsyncedIds.has(s.id))];
+              });
+            }
+            if (data.iceDebt) {
+              setIceDebtEntries(prev => {
+                const unsynced = prev.filter(e => !e.isSynced);
+                const synced = data.iceDebt.map((p: any) => ({ ...p, isSynced: true }));
+                const unsyncedIds = new Set(unsynced.map(u => u.id));
+                return [...unsynced, ...synced.filter((s: any) => !unsyncedIds.has(s.id))];
+              });
+            }
+            if (data.customerDebt) {
+              setCustomerDebtEntries(prev => {
+                const unsynced = prev.filter(e => !e.isSynced);
+                const synced = data.customerDebt.map((p: any) => ({ ...p, isSynced: true }));
+                const unsyncedIds = new Set(unsynced.map(u => u.id));
+                return [...unsynced, ...synced.filter((s: any) => !unsyncedIds.has(s.id))];
+              });
+            }
           }
         }
       } catch (err) {
@@ -95,10 +120,11 @@ const App: React.FC = () => {
       }
     };
 
+    // ดึงข้อมูลใหม่ทุกครั้งที่เข้าหน้าส่องยอด หรือหน้าสรุปยอด เพื่อให้ได้ยอดล่าสุดจากชีต
     if (view === 'peek-stats' || view === 'dashboard') {
       fetchExistingData();
     }
-  }, [sheetUrl, view]);
+  }, [sheetUrl, view]); // ทำงานทุกครั้งที่เปลี่ยนหน้า View หรือเปลี่ยน URL
 
   useEffect(() => {
     localStorage.setItem('shop_entries', JSON.stringify(entries));
@@ -123,15 +149,10 @@ const App: React.FC = () => {
   const peekResults = useMemo(() => {
     if (!peekSearch.trim()) return null;
     const now = new Date();
-    
-    // กำหนดวันที่ปัจจุบันแบบแยกหน่วย เพื่อความแม่นยำในการเปรียบเทียบรายวัน
-    const todayYear = now.getFullYear();
-    const todayMonth = now.getMonth();
-    const todayDate = now.getDate();
-    
-    const weekStart = new Date(todayYear, todayMonth, todayDate);
-    weekStart.setDate(weekStart.getDate() - 6); // 7 วันล่าสุดรวมวันนี้
-    
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekStart = new Date(todayStart);
+    weekStart.setDate(todayStart.getDate() - 7);
+
     const stats = {
       today: { qty: 0, amount: 0 },
       week: { qty: 0, amount: 0 },
@@ -143,29 +164,19 @@ const App: React.FC = () => {
     entries.forEach(e => {
       if (e.productName.toLowerCase().includes(target)) {
         const d = new Date(e.timestamp);
-        
-        // 1. วันนี้ (เปรียบเทียบ ปี-เดือน-วัน ให้ตรงกับปัจจุบันแบบเป๊ะๆ)
-        if (d.getFullYear() === todayYear && 
-            d.getMonth() === todayMonth && 
-            d.getDate() === todayDate) {
+        if (d >= todayStart) {
           stats.today.qty += e.quantity;
           stats.today.amount += e.totalPrice;
         }
-        
-        // 2. 7 วันล่าสุด (Rolling 7 days)
         if (d >= weekStart) {
           stats.week.qty += e.quantity;
           stats.week.amount += e.totalPrice;
         }
-        
-        // 3. เดือนนี้ (ปฏิทินเดือนปัจจุบัน)
-        if (d.getMonth() === todayMonth && d.getFullYear() === todayYear) {
+        if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
           stats.month.qty += e.quantity;
           stats.month.amount += e.totalPrice;
         }
-        
-        // 4. ปีนี้ (ปฏิทินปีปัจจุบัน)
-        if (d.getFullYear() === todayYear) {
+        if (d.getFullYear() === now.getFullYear()) {
           stats.year.qty += e.quantity;
           stats.year.amount += e.totalPrice;
         }
@@ -338,6 +349,7 @@ const App: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+              {/* Added explicit type annotation [string, any] to fix unknown property error in TypeScript */}
               {Object.entries(categorySummary).map(([cat, data]: [string, any]) => (
                 <div key={cat} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center">
                   <span className="text-[10px] text-slate-500 font-bold text-center h-8 flex items-center leading-none">{cat}</span>
